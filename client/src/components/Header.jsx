@@ -6,6 +6,7 @@ export default function Header() {
 
 const {currentUser} = useSelector(state => state.user)
 
+
   return (
     <div className="bg-cyan-300">
       <div className='flex justify-between items-center max-w-6xl mx-auto'>
