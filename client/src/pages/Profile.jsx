@@ -1,12 +1,17 @@
 import { useSelector } from "react-redux";
 import { useRef, useState, useEffect } from "react";
-import { getStorage, ref, uploadBytesResumable } from 'firebase/storage'
+import { getDownloadURL, getStorage, ref, uploadBytesResumable } from 'firebase/storage'
 import { app } from '../firebase'
+
 
 export default function Profile() {
   const { currentUser } = useSelector((state) => state.user);
   const [image, setImage] = useState(undefined)
+  const [imagePercentage, setImagePercentage] = useState(0)
+  const [imageError, setimageError] = useState(false)
+  const [formData, setFormData] = useState({})
   const fileRef = useRef(null);
+  
 
   useEffect(() => {
     if (image) {
@@ -22,16 +27,29 @@ export default function Profile() {
     const uploadTask = uploadBytesResumable(storageRef, image)
     uploadTask.on('state_changed', (snapshot) => {
       const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-      console.log('Upload is ' + progress + "% done")
-    })
+      setImagePercentage(Math.round(progress))
+    }),
+    (error) => {
+      setimageError(true)
+    },
+    () => {
+      getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+        setFormData({...formData, profilePicture: downloadURL})
+      })
+    }
   }
 
   return (
     <div className="p-3 max-w-lg mx-auto">
       <h1 className="text-4xl text-center font-semibold my-8">Profile</h1>
       <form className="flex flex-col gap-4">
-        <input type="file" hidden accept="image/*" ref={fileRef} 
-        onChange={(e)=> setImage(e.target.files[0])}/>
+        <input
+          type="file"
+          hidden
+          accept="image/*"
+          ref={fileRef}
+          onChange={(e) => setImage(e.target.files[0])}
+        />
         {/* allow read; 
       allow write: if
       request.resource.size < 2 * 1024 * 1024 && 
@@ -43,6 +61,20 @@ export default function Profile() {
         cursor-pointer rounded-full object-cover mt-2"
           onClick={() => fileRef.current.click()}
         />
+        <p className="text-sm self-center">
+          {imageError ? (
+            <span className="text-red-700">Error Uploading Image (File size must be less than 2MB)</span>
+          ) : imagePercentage > 0 && imagePercentage < 100 ? (
+            <span className="text-slate-700">
+              {" "}
+              {`Uploading: ${imagePercentage}%`}
+            </span>
+          ) : imagePercentage === 100 ? (
+            <span className="text-green-700"> Image uploaded successfuly</span>
+          ) : (
+            ""
+          )}
+        </p>
         <input
           defaultValue={currentUser.username}
           type="text"
